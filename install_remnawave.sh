@@ -317,56 +317,69 @@ EOF
     rm -f /tmp/docker_logs
     clear
     
-    sudo apt-get install -y cron socat
-    
-    echo -e "${ORANGE}Installing acme.sh for certificate management...${NC}"
+   sudo apt-get install -y cron socat
+
+echo -e "${ORANGE}Installing acme.sh for certificate management...${NC}"
+curl https://get.acme.sh | sh -s email="$EMAIL" > /dev/null 2>&1
+source ~/.bashrc
+export PATH=$PATH:/root/.acme.sh
+
+# Force Let's Encrypt
+~/.acme.sh/acme.sh --set-default-ca --server letsencrypt
+
+clear
+echo -ne "${ORANGE}Enter your email address for certificate: ${NC}"
+read EMAIL
+
+if ! command -v acme.sh &>/dev/null; then
+    echo -e "${ORANGE}acme.sh not found. Re-installing acme.sh...${NC}"
     curl https://get.acme.sh | sh -s email="$EMAIL" > /dev/null 2>&1
     source ~/.bashrc
     export PATH=$PATH:/root/.acme.sh
-    
-    clear
-    echo -ne "${ORANGE}Enter your email address for certificate: ${NC}"
-    read EMAIL
-    
-    if ! command -v acme.sh &>/dev/null; then
-        echo -e "${ORANGE}acme.sh not found. Re-installing acme.sh...${NC}"
-        curl https://get.acme.sh | sh -s email="$EMAIL" > /dev/null 2>&1
-        source ~/.bashrc
-        export PATH=$PATH:/root/.acme.sh
-    fi
-    
-    mkdir -p ~/remnawave/nginx && cd ~/remnawave/nginx
-    
-    echo -e "${YELLOW}Do not use domain zones: .ru, .su, .рф. Currently ZeroSSL does not support these zones.${NC}"
-    echo -ne "${ORANGE}Enter your domain for getting certificate: ${NC}"
-    read CERT_DOMAIN
-    
-    if ! echo "$CERT_DOMAIN" | grep -P '^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$' > /dev/null; then
-        echo -e "${BOLD_RED}Error: Domain '$CERT_DOMAIN' is not properly formatted. Use a valid domain like 'example.com' or 'sub.domain.com'.${NC}"
-        echo -e "\n${ORANGE}Press Enter to try again or return to the main menu...${NC}"
-        read
-        return 1
-    fi
-    
-    if ! ping -c 1 "$CERT_DOMAIN" &>/dev/null; then
-        echo -e "${BOLD_RED}Error: Domain '$CERT_DOMAIN' does not resolve. Please enter a valid public domain.${NC}"
-        echo -e "\n${ORANGE}Press Enter to try again or return to the main menu...${NC}"
-        read
-        return 1
-    fi
-    
-    fuser -k 8443/tcp 2>/dev/null || true
-    
-    if ! command -v acme.sh &>/dev/null; then
-        echo -e "${BOLD_RED}Error: acme.sh is still not available. Aborting certificate issuance.${NC}"
-        echo -e "\n${ORANGE}Press Enter to return to the main menu...${NC}"
-        read
-        return 1
-    fi
-    
-    acme.sh --issue --standalone -d "$CERT_DOMAIN" --key-file ~/remnawave/nginx/privkey.key --fullchain-file ~/remnawave/nginx/fullchain.pem --alpn --tlsport 8443
-    
-    curl https://ssl-config.mozilla.org/ffdhe2048.txt > ~/remnawave/nginx/dhparam.pem
+
+    # Force Let's Encrypt again
+    ~/.acme.sh/acme.sh --set-default-ca --server letsencrypt
+fi
+
+mkdir -p ~/remnawave/nginx && cd ~/remnawave/nginx
+
+echo -ne "${ORANGE}Enter your domain for getting certificate: ${NC}"
+read CERT_DOMAIN
+
+if ! echo "$CERT_DOMAIN" | grep -P '^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$' > /dev/null; then
+    echo -e "${BOLD_RED}Error: Domain '$CERT_DOMAIN' is not properly formatted. Use a valid domain like 'example.com' or 'sub.domain.com'.${NC}"
+    echo -e "\n${ORANGE}Press Enter to try again or return to the main menu...${NC}"
+    read
+    return 1
+fi
+
+if ! ping -c 1 "$CERT_DOMAIN" &>/dev/null; then
+    echo -e "${BOLD_RED}Error: Domain '$CERT_DOMAIN' does not resolve. Please enter a valid public domain.${NC}"
+    echo -e "\n${ORANGE}Press Enter to try again or return to the main menu...${NC}"
+    read
+    return 1
+fi
+
+fuser -k 8443/tcp 2>/dev/null || true
+
+if ! command -v acme.sh &>/dev/null; then
+    echo -e "${BOLD_RED}Error: acme.sh is still not available. Aborting certificate issuance.${NC}"
+    echo -e "\n${ORANGE}Press Enter to return to the main menu...${NC}"
+    read
+    return 1
+fi
+
+# Issue certificate using Let's Encrypt
+acme.sh --issue \
+  --server letsencrypt \
+  --standalone \
+  -d "$CERT_DOMAIN" \
+  --key-file ~/remnawave/nginx/privkey.key \
+  --fullchain-file ~/remnawave/nginx/fullchain.pem \
+  --alpn \
+  --tlsport 8443
+
+curl https://ssl-config.mozilla.org/ffdhe2048.txt > ~/remnawave/nginx/dhparam.pem
     
     cat > nginx.conf << EOF
 upstream remnawave {
