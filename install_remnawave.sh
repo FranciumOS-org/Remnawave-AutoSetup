@@ -120,13 +120,6 @@ validate_numeric_port() {
 install_panel() {
     clear
     
-    check_internet || {
-        echo -e "${BOLD_RED}Error: Internet connection required for installation.${NC}"
-        echo -e "\n${ORANGE}Press Enter to return to the main menu...${NC}"
-        read
-        return 1
-    }
-    
     (
         sudo apt update -y > /dev/null 2>&1
         sudo apt install -y apt-transport-https ca-certificates curl software-properties-common > /dev/null 2>&1
