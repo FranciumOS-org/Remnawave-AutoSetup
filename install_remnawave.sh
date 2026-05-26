@@ -28,17 +28,6 @@ CPU_INFO=$(grep "model name" /proc/cpuinfo | head -n 1 | cut -d ':' -f 2 | sed '
 MEMORY_INFO=$(free -h | grep "Mem:" | awk '{print $2}')
 DISK_INFO=$(df -h / | awk 'NR==2 {print $2}')
 
-check_internet() {
-    echo -ne "${BOLD_BLUE_MENU}Checking internet connection... ${NC}"
-    if ping -c 1 google.com &>/dev/null; then
-        echo -e "${BOLD_GREEN}Connected${NC}"
-        return 0
-    else
-        echo -e "${BOLD_RED}Not connected${NC}"
-        return 1
-    fi
-}
-
 print_banner() {
     echo -e "${BOLD_PINK}"
     echo "█████╗ ███████╗ █████╗ ███╗   ██╗    ███████╗██╗██╗     ██╗  ████████╗███████╗██████╗ "
